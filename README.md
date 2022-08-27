@@ -132,6 +132,13 @@ con = sqlite3.connect('/Users/bytedance/Library/Containers/com.tencent.xinWeChat
 数据路径：/Users/bytedance/Library/Containers/com.tencent.xinWeChat/Data/Library/Application Support/com.tencent.xinWeChat/2.0b4.0.9/3a4f5181fdafb7b9b9c2bed2aac1897f/Message/msg_1.db
 
 表格路径：Chat_46cf6649760baa443cadf803d532e0d1
+--- 
+附录3：github上传
+➜  getSpark git:(develop) ✗ git remote add origin git@github.com:Steven147/GetSpark.git
+➜  getSpark git:(main) ✗ git branch -M main
+➜  getSpark git:(main) ✗ git push -u origin main
+
+➜  getSpark git:(main) ✗ git branch -M develop
 
 
 
