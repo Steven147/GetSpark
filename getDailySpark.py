@@ -21,7 +21,9 @@ def getTimeStr():
     # 增量扫描 startTimeStr=nowTimeStr
     nowTimeStr = now.strftime("%m%d")
     # startTimeStr = "0822"
+    ytsDay = now - datetime.timedelta(days=1)
     startTimeStr = nowTimeStr
+    ytsDayTimeStr = ytsDay.strftime("%m%d")
 
 
     # 读取天内标签 ------------------------- 
@@ -31,12 +33,12 @@ def getTimeStr():
 
     nowActStr = now.strftime("%m-%d %H:%M:%S")
 
-    return nowTimeStr, startTimeStr, deltaStartDay, nowActStr
+    return nowTimeStr, ytsDayTimeStr, startTimeStr, deltaStartDay, nowActStr
 
 def getData(): 
     # 读取数据：总聊天记录、已处理的聊天记录字典、点位字典
     with open("sparkDict.json", "r") as sDin:
-        nowTimeStr, startTimeStr, _, _ = getTimeStr()
+        nowTimeStr, _, startTimeStr, _, _ = getTimeStr()
         if nowTimeStr == startTimeStr :
             sparkDict = json.load(sDin)
         elif startTimeStr == "0822":# 重新开始扫描，清空
@@ -64,12 +66,14 @@ def getDailySpark(inp):
     
     sparkDict, pointDict, nameDict, results = inp
 
-    nowTimeStr, startTimeStr, deltaStartDay, _ = getTimeStr()
+    nowTimeStr, ytsDaysTimeStr, startTimeStr, deltaStartDay, _ = getTimeStr()
     durationDays = [str(i) for i in pointDict]
     durationDays = durationDays[durationDays.index(deltaStartDay):]
 
     # 重新开始扫描 startTimeStr=0822
     # 增量扫描 startTimeStr=nowTimeStr
+    if nowTimeStr not in pointDict:
+        pointDict[startTimeStr] = pointDict[ytsDaysTimeStr]
     startPoint = pointDict[startTimeStr]
     pointDict[nowTimeStr] = len(results) - 1
     if startPoint == pointDict[nowTimeStr]:
@@ -134,7 +138,7 @@ def saveData(inp):
 
 if __name__ == "__main__":
     saveData(getDailySpark(getData()))
-    _, _, _, nowActTimeStr = getTimeStr()
+    _, _, _, _, nowActTimeStr = getTimeStr()
     print("————\n火花整理:https://cm0nlh86eu.feishu.cn/sheets/shtcnExX9jrUoIxaTaWU0dJIVnh\n更新时间:%s\n————"%(nowActTimeStr))
     
 
