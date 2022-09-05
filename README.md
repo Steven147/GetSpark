@@ -2,10 +2,18 @@
 
 > Author：linshaoqin // 作者：林绍钦
 
-## Feature // 功能简述：
+- [Get Spark // 获取火花脚本](#get-spark--获取火花脚本)
+  - [Feature // 功能简述](#feature--功能简述)
+  - [Workflow // 工作流程](#workflow--工作流程)
+  - [Todo // 待改进](#todo--待改进)
+  - [Version // 代码版本与内容](#version--代码版本与内容)
+  - [Requirement // 环境需求与复现](#requirement--环境需求与复现)
+  - [Reference // 参考资料](#reference--参考资料)
+
+## Feature // 功能简述
 ***获取微信群中群成员每日火花，储存到飞书在线文档中并统计***。
 
-## Workflow // 工作流程：
+## Workflow // 工作流程
 
 聊天数据在工作流程中，经过以下转化：
 
@@ -22,35 +30,50 @@
   - 【可扩展】对接workflow，自动将消息发送到群里
   - 【可扩展】对接到飞书云文档api，利用云函数，自动储存到在线表格中
 
+## Todo // 待改进
+
+- [ ] 更安全的python代码（一些限制输入输出的方式，让全局变量的获取和实现更加安全）
+  - [ ] python全局变量实现原理以及使用
+- [ ] 优化递归函数，采用datetime库更优雅的轮子
+- [ ] 提供指定范围内的重新扫描功能，应对较远时间的补交
+
 ## Version // 代码版本与内容
 
+v2.0.0
+- [x] 根据程序数据处理特性，使用全局变量传递四个参数，让代码更加简洁
+- [x] 时间戳实现自动更新，根据datetime库的特点，使用递归方式逐步初始化
+  - [x] 明确了pointDict的内容和使用方式：保存每一天对应第一条火花的内容
+  - [x] 在扫描时，从某一天开始，先清空此前的dict，识别str也是从当天开始
+  - [x] 只在完全扫描结束后进行赋值，赋值后也代表这一天已经搜索完毕
+- [x] 搜索方式从原来的一遍多timeStr，更改到了现在的单次只扫描一个timeStr，进行多次扫描
+  - [x] 抽象出getTodaySpark函数，封装了扫描单日的逻辑
+
 v1.0.1
-- 修复bug：第二天条目如果为空无法生成数据，设置为读取前一天的值为初始值
-- 数据添加进.gitignore，不再更新数据
-- 仓库中数据删除
+- [x] 修复bug：第二天条目如果为空无法生成数据，设置为读取前一天的值为初始值
+- [x] 数据添加进.gitignore，不再更新数据
+- [x] 仓库中数据删除
 
 
 v1.0.0
-- 代码将“读取消息范围”和“日期关键词范围”分离，实现增量更新，降低复杂度
-  - “读取消息范围”根据point字典储存的消息index确定，实现了增量更新，不需要每一次都从头开始读取。
-  - “日期关键词范围”设置为昨日、今日、明日三天，即在0827日更新0826日的火花，同时扫描0825，0826，0827这三个标签，考虑补发和提前发的情况。不需要每次都从第一天关键字开始扫描，复杂度从 $O(N^2)$ 下降到 $O(N)$
+- [x] 代码将“读取消息范围”和“日期关键词范围”分离，实现增量更新，降低复杂度
+  - [x] “读取消息范围”根据point字典储存的消息index确定，实现了增量更新，不需要每一次都从头开始读取。
+  - [x] “日期关键词范围”设置为昨日、今日、明日三天，即在0827日更新0826日的火花，同时扫描0825，0826，0827这三个标签，考虑补发和提前发的情况。不需要每次都从第一天关键字开始扫描，复杂度从 $O(N^2)$ 下降到 $O(N)$
     > Python3.6 版本以后的 dict 是有序的，因此不需要考虑字典的顺序，可以直接当做有序处理
-- 完善代码输出、注释和文档
-
-
+- [x] 完善代码输出、注释和文档
 
 v0.0.3
-- 实现单日单人多条火花的补充更新（而不是覆盖）
-- 实现扫描所有日期关键词
-- 实现一定容错的关键词搜索（只要包含火花和日期就可以识别，只写“火花“那可能需要NLP救驾了）
+- [x] 实现单日单人多条火花的补充更新（而不是覆盖）
+- [x] 实现扫描所有日期关键词
+- [x] 实现一定容错的关键词搜索（只要包含火花和日期就可以识别，只写“火花“那可能需要NLP救驾了）
 
 v0.0.2
-- 自动化生成时间标签，并将消息index储存成pointDict字典
-- 将人名和id保存成nameDict字典，并且实现提示新人名
-- 将火花储存成sparkDict字典，每次都从头读取并保存
+- [x] 自动化生成时间标签，并将消息index储存成pointDict字典
+- [x] 将人名和id保存成nameDict字典，并且实现提示新人名
+- [x] 将火花储存成sparkDict字典，每次都从头读取并保存
   
 v0.0.1
-- 代码实现基础功能，从当日聊天记录json文件中，提取出火花数据，储存为xlsx文件
+- [x] 代码实现基础功能，从当日聊天记录json文件中，提取出火花数据，储存为xlsx文件
+
 
 
 ## Requirement // 环境需求与复现
@@ -126,7 +149,6 @@ print(key)
 # 0xd7e4b94a54c74e1aaecebf4c7e20d645ac4539cfe1bc4dc9a25d4c4be9652333
 ```
 
---- 
 附录2：参考资料
 
 虚拟环境构建miniconda：https://formulae.brew.sh/cask/miniconda
@@ -138,7 +160,7 @@ con = sqlite3.connect('/Users/bytedance/Library/Containers/com.tencent.xinWeChat
 数据路径：/Users/bytedance/Library/Containers/com.tencent.xinWeChat/Data/Library/Application Support/com.tencent.xinWeChat/2.0b4.0.9/3a4f5181fdafb7b9b9c2bed2aac1897f/Message/msg_1.db
 
 表格路径：Chat_46cf6649760baa443cadf803d532e0d1
---- 
+
 附录3：github上传
 ➜  getSpark git:(develop) ✗ git remote add origin git@github.com:Steven147/GetSpark.git
 ➜  getSpark git:(main) ✗ git branch -M main
@@ -146,5 +168,5 @@ con = sqlite3.connect('/Users/bytedance/Library/Containers/com.tencent.xinWeChat
 
 ➜  getSpark git:(main) ✗ git branch -M develop
 
-
+附录4：[关于gitignore](https://segmentfault.com/q/1010000000430426)
 
