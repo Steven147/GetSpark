@@ -1,131 +1,96 @@
 import json, datetime
 import pandas as pd
 
-# 打开数据库;0xd7e4b94a54c74e1aaecebf4c7e20d645ac4539cfe1bc4dc9a25d4c4be9652333
+# 打开数据库; 0xd7e4b94a54c74e1aaecebf4c7e20d645ac4539cfe1bc4dc9a25d4c4be9652333
 # 保存到json
-# 运行程序（在第二天中午运行）
+# 运行程序
 # 复制
 
-# 自动获取：firstTimeStr（第一天），timeStr（昨天），nowTimeStr（今天）
-
-# 扫描标签范围，当日为0827时，扫描0825，0826，0827三日标签
-delta = 2
-
-def getTimeStr():    
-
-    now = datetime.datetime.now()
-
-    
-    
-    # 重新开始扫描 startTimeStr=0822
-    # 增量扫描 startTimeStr=nowTimeStr
-    nowTimeStr = now.strftime("%m%d")
-    # startTimeStr = "0822"
-    ytsDay = now - datetime.timedelta(days=1)
-    startTimeStr = nowTimeStr
-    ytsDayTimeStr = ytsDay.strftime("%m%d")
-
-
-    # 读取天内标签 ------------------------- 
-    deltaDays = now - datetime.timedelta(days=delta)
-    # deltaDays = datetime.datetime.strptime("0822", '%m%d')
-    deltaStartDay = deltaDays.strftime("%m%d")
-
-    nowActStr = now.strftime("%m-%d %H:%M:%S")
-
-    return nowTimeStr, ytsDayTimeStr, startTimeStr, deltaStartDay, nowActStr
-
+# 获取四个字典数据：已处理的聊天记录字典、点位字典、名字字典、总聊天记录字典
 def getData(): 
-    # 读取数据：总聊天记录、已处理的聊天记录字典、点位字典
+    # 保存成全局变量
+    global sparkDict, pointDict, nameDict, chatDict
     with open("sparkDict.json", "r") as sDin:
-        nowTimeStr, _, startTimeStr, _, _ = getTimeStr()
-        if nowTimeStr == startTimeStr :
-            sparkDict = json.load(sDin)
-        elif startTimeStr == "0822":# 重新开始扫描，清空
-            sparkDict = {}
+        sparkDict = json.load(sDin)
     
     # Python3.6 版本以后的 dict 是有序的
     with open("pointDict.json", "r") as pDin:
         pointDict = json.load(pDin)
-
     
     with open("nameDict.json", "r") as nDin:
         nameDict = json.load(nDin)
+        # 在此添加/更新人名：
         # nameDict['wxid_h2ixckqehtde12'] = '姚泽雄'
         # for i in nameDict:
-        #     if nameDict[i] == '欣雪':
-        #         nameDict[i] = '陈欣雪'
-
+        #     if nameDict[i] == '欣雪': nameDict[i] = '陈欣雪'
         
     with open("Chat_46cf6649760baa443cadf803d532e0d1.json", "r") as fDin:
-        results = json.load(fDin)
+        chatDict = json.load(fDin)
 
-    return sparkDict, pointDict, nameDict, results
+# 工具函数：根据今天的时间戳获取前一天时间戳
+def getYstday(todayTimeStr):
+    today = datetime.datetime.strptime(todayTimeStr, '%m%d')
+    ystday = today - datetime.timedelta(days=1)
+    ystdayTimeStr = ystday.strftime('%m%d')
+    return ystdayTimeStr
+
+# 插入没有定义的时间戳timeStr，直到程序运行当日，初始值设置为-1
+def insertTimeStr():
+    # 插入至当日=递归插入前一日+插入当日（当日已经插入便返回）
+    def insertTilToday(todayTimeStr):
+        # 设置一个初始化的值，防止无限递归，同时第一天设置为0（已经有值，代表当日已经识别完成）
+        if '0821' not in pointDict: pointDict['0821'] = 0
+        if todayTimeStr not in pointDict:
+            # 顺序不能错，因为pointDict是按顺序读取
+            insertTilToday(getYstday(todayTimeStr))
+            pointDict[todayTimeStr] = -1 
+
+    nowTimeStr = datetime.datetime.now().strftime("%m%d")
+    insertTilToday(nowTimeStr)
+
+# 工具函数：搜索这一天的火花，搜索范围是前一天火花的第一条至最后，搜索时间戳就是这一天
+def getTodaySpark(todayTimeStr):
+    if todayTimeStr in sparkDict: sparkDict.pop(todayTimeStr) # 清空当天火花
+    ystdayTimeStr = getYstday(todayTimeStr)
+    startPoint = pointDict[ystdayTimeStr]
+    print("搜索%s火花，搜索起点为第%s条，终点为第%s条"%(todayTimeStr, startPoint, len(chatDict)))
+    print("----")
+    firstSparkPoint = -1
+    for point, chat in enumerate(chatDict[startPoint:]):
+        if chat["messageType"] == 1:
+            content = chat["msgContent"]
+            if chat["mesDes"] == 1:
+                name = content.strip().split(":\n")[0]
+                if name not in nameDict:
+                    print('新名字:', name, msg)
+                    nameDict[name] = name
+                realName = nameDict[name]
+                msg = content.strip().replace("\n", " ").replace("\r", " ").replace(name+':', "")
+            else:
+                realName = '林绍钦'
+                msg = content.strip().replace("\n", " ").replace("\r", " ")
+
+            if '火花' in msg and todayTimeStr in msg:
+                if todayTimeStr in sparkDict: # 这天已经有火花
+                    if realName in sparkDict[todayTimeStr]: # 这天这人已经发过火花，补充在后面
+                        sparkDict[todayTimeStr][realName] = sparkDict[todayTimeStr][realName] + '\n---\n' + msg
+                    else: sparkDict[todayTimeStr][realName] = msg # 这天这人第一次发火花
+                else: # 这天第一个人发火花
+                    firstSparkPoint = point + startPoint
+                    sparkDict[todayTimeStr] = {realName: msg}
     
-def getDailySpark(inp):
-    
-    sparkDict, pointDict, nameDict, results = inp
+    return firstSparkPoint
 
-    nowTimeStr, ytsDaysTimeStr, startTimeStr, deltaStartDay, _ = getTimeStr()
-    durationDays = [str(i) for i in pointDict]
-    durationDays = durationDays[durationDays.index(deltaStartDay):]
+# 从未初始化的那天开始，逐天初始化
+def getSpark():
+    for timeStr, point in pointDict.items():
+        if point == -1:
+            pointDict[timeStr] = getTodaySpark(timeStr)
 
-    # 重新开始扫描 startTimeStr=0822
-    # 增量扫描 startTimeStr=nowTimeStr
-    if nowTimeStr not in pointDict:
-        pointDict[startTimeStr] = pointDict[ytsDaysTimeStr]
-    startPoint = pointDict[startTimeStr]
-    pointDict[nowTimeStr] = len(results) - 1
-    if startPoint == pointDict[nowTimeStr]:
-        print("————\n从%s日消息读取第%s条消息到第%s条消息，已经是最新"%(startTimeStr, startPoint, pointDict[nowTimeStr]))
-    else:
-        print("————\n从%s日消息读取第%s条消息到第%s条消息，扫描日期字段包括%s"%(startTimeStr, startPoint, pointDict[nowTimeStr],durationDays))
-        for dic in results[startPoint:]:
-            if dic["messageType"] == 1:
-                content = dic["msgContent"]
-                name = ''
-                realName = ''
-
-                if dic["mesDes"] == 1:
-                    name = content.strip().split(":\n")[0]
-                    if name in nameDict: 
-                        realName = nameDict[name]
-                    else:
-                        print('新名字:', name, msg)
-                        name = nameDict[name]
-                        realName = name
-                    
-                    msg = content.strip().replace("\n", " ").replace("\r", " ").replace(name+':', "")
-
-                else:
-                    realName = '林绍钦'
-                    msg = content.strip().replace("\n", " ").replace("\r", " ")
-                    
-                # if msg.startswith('火花' + timeStr):
-                # if '姚泽雄火花 ' in msg: print(name)
-                
-                for ptime in durationDays:
-                    if '火花' in msg and ptime in msg:
-                        if ptime in sparkDict: #这天有人发过火花
-                            if realName in sparkDict[ptime]: #这天已经发过火花，补充在后面
-                                sparkDict[ptime][realName] = sparkDict[ptime][realName] + '\n---\n' + msg
-                            else: #这天第一次发火花
-                                sparkDict[ptime][realName] = msg
-                        else: #这天第一个人发火花
-                            sparkDict[ptime] = {realName: msg}
-                
-                # elif '火花' in msg:
-                #     print('未收入消息：', msg)
-
-    return sparkDict, pointDict, nameDict, results
-
-
-def saveData(inp):
-    sparkDict, pointDict, nameDict, results = inp
+# 保存数据：其中chatDict不需要修改，并且使用pd额外将火花保存成xlsx文件
+def saveData():
     with open("sparkDict.json", "w") as fout:
         json.dump(sparkDict, fout)
-
-    # pointDict.to_json("pointDict.json")
     with open("pointDict.json", "w") as fout:
         json.dump(pointDict, fout)
     with open("nameDict.json", "w") as fout:
@@ -137,8 +102,11 @@ def saveData(inp):
     
 
 if __name__ == "__main__":
-    saveData(getDailySpark(getData()))
-    _, _, _, _, nowActTimeStr = getTimeStr()
-    print("————\n火花整理:https://cm0nlh86eu.feishu.cn/sheets/shtcnExX9jrUoIxaTaWU0dJIVnh\n更新时间:%s\n————"%(nowActTimeStr))
-    
+    getData()
+    insertTimeStr()
+    getSpark()
+    saveData()
+    print("火花整理:https://cm0nlh86eu.feishu.cn/sheets/shtcnExX9jrUoIxaTaWU0dJIVnh")
+    print("更新时间:%s"%(datetime.datetime.now().strftime("%m-%d %H:%M:%S")))
+    print("----")
 
