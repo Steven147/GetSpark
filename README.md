@@ -36,6 +36,9 @@
   - [ ] python全局变量实现原理以及使用
 - [ ] 优化递归函数，采用datetime库更优雅的轮子
 - [ ] 提供指定范围内的重新扫描功能，应对较远时间的补交
+- [ ] 自动获取聊天备注人名，实现对名字的更新
+- [ ] 实现GUI
+- [ ] 实现不同电脑的迁移，在新分支上线通用版本！
 
 ## Version // 代码版本与内容
 
@@ -80,16 +83,30 @@ v0.0.1
 
 复现可以直接下载代码，建议使用anaconda配置python环境，依赖模块和版本如下。
 
-下载后，根据附录中解密方法参考实现工作流程的第一步：生成 msg_1.db，然后交给getDailySpark.py就行。
+[Getting Started - pip documentation v22.2.2](https://pip.pypa.io/en/stable/getting-started/#install-multiple-packages-using-a-requirements-file)
+
+```s
+~ git clone
+~ conda create -n getSpark-py37 python=3.7.2
+~ conda activate getSpark-py37
+~ pip install -r .backup/requirement.txt #pip freeze > requirement.txt
+~ python getDailySpark.py
+```
 
 ```
-% getSpark pip freeze > requirement.txt
-
 numpy==1.21.6
+openpyxl==3.0.10
 pandas==1.3.5
 python-dateutil==2.8.2
-python==3.7.2
 ```
+
+配置python环境流程较为简单，不再赘述。
+> 注意，OP is on osx-arm64 platform. There are only Python v3.8 and v3.9 builds for that.
+
+然后是根据附录中方法解密。能够打开 msg_1.db就算成功。
+> 注意，涉及到的读取内存的机器指令和cpu架构(arm64-M1)有关，需要调整命令
+
+当然，为了脱敏，我没有上传人员信息的字典，有需要可以dd我或者在issue中提。   
 
 ## Reference // 参考资料
 
@@ -101,7 +118,7 @@ python==3.7.2
 
 本机命令行运行记录：
 ```sh
-% sudo lldb -p $(pgrep WeChat)
+% sudo lldb -p $(pgrep WeChat) # 打开微信（不登陆）的情况下才可以获取进程信息
 (lldb) process attach --pid 1797
 Process 1797 stopped
 * thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP
@@ -123,7 +140,8 @@ Process 1797 resuming
 Process 1797 stopped
 * thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
     frame #0: 0x0000000107aa4854 WCDB`sqlite3_key
-WCDB`sqlite3_key:
+------ 旧架构情况
+WCDB\`sqlite3_key:
 ->  0x107aa4854 <+0>: pushq  %rbp
     0x107aa4855 <+1>: movq   %rsp, %rbp
     0x107aa4858 <+4>: movl   %edx, %ecx
@@ -134,9 +152,28 @@ Target 0: (WeChat) stopped.
 0x60000062d6a8: 0xae 0xce 0xbf 0x4c 0x7e 0x20 0xd6 0x45
 0x60000062d6b0: 0xac 0x45 0x39 0xcf 0xe1 0xbc 0x4d 0xc9
 0x60000062d6b8: 0xa2 0x5d 0x4c 0x4b 0xe9 0x65 0x23 0x33
+------ 新架构情况
+Architecture set to: arm64e-apple-macosx-.
+...
+WCDB\`sqlite3_key:
+->  0x10930bfd4 <+0>:  mov    x3, x2
+    0x10930bfd8 <+4>:  mov    x2, x1
+    0x10930bfdc <+8>:  adr    x1, #0x2c215              ; "main"
+    0x10930bfe0 <+12>: nop    
+Target 0: (WeChat) stopped.
+(lldb) memory read --size 1 --format x --count 32
+error: memory read takes a start address expression with an optional end address expression.
+warning: Expressions should be quoted if they contain spaces or other special characters.
+(lldb) memory read --size 1 --format x --count 32 $x1
+0x600002657ce0: 0xd9 0x27 0xf6 0x90 0xcd 0x39 0x43 0xa7
+0x600002657ce8: 0xa9 0xcd 0x53 0x76 0x5e 0xca 0x2a 0xd6
+0x600002657cf0: 0x1d 0x54 0xa2 0x86 0xd8 0xca 0x4d 0xa4
+0x600002657cf8: 0xa3 0x4b 0x16 0x1a 0x36 0xbe 0xf0 0x5a
 ```
 
 python代码格式化输出密码：
+
+旧架构：
 ```py
 source = """
 0x60000062d6a0: 0xd7 0xe4 0xb9 0x4a 0x54 0xc7 0x4e 0x1a
@@ -147,6 +184,20 @@ source = """
 key = '0x' + ''.join(i.partition(":")[2].replace('0x', '').replace(' ', '') for i in source.split('\n')[1:5])
 print(key)
 # 0xd7e4b94a54c74e1aaecebf4c7e20d645ac4539cfe1bc4dc9a25d4c4be9652333
+```
+新架构：
+```py
+source = """
+0x600002657ce0: 0xd9 0x27 0xf6 0x90 0xcd 0x39 0x43 0xa7
+0x600002657ce8: 0xa9 0xcd 0x53 0x76 0x5e 0xca 0x2a 0xd6
+0x600002657cf0: 0x1d 0x54 0xa2 0x86 0xd8 0xca 0x4d 0xa4
+0x600002657cf8: 0xa3 0x4b 0x16 0x1a 0x36 0xbe 0xf0 0x5a
+"""
+
+key = '0x' + ''.join(i.partition(":")[2].replace('0x', '').replace(' ', '') for i in source.split('\n')[1:5])
+
+print(key)
+# 0xd927f690cd3943a7a9cd53765eca2ad61d54a286d8ca4da4a34b161a36bef05a
 ```
 
 附录2：参考资料

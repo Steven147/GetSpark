@@ -1,7 +1,7 @@
 import json, datetime
 import pandas as pd
 
-# 打开数据库; 0xd7e4b94a54c74e1aaecebf4c7e20d645ac4539cfe1bc4dc9a25d4c4be9652333
+# 打开数据库; 0xd927f690cd3943a7a9cd53765eca2ad61d54a286d8ca4da4a34b161a36bef05a
 # 保存到json
 # 运行程序
 # 复制
@@ -20,7 +20,8 @@ def getData():
     with open("nameDict.json", "r") as nDin:
         nameDict = json.load(nDin)
         # 在此添加/更新人名：
-        # nameDict['wxid_h2ixckqehtde12'] = '姚泽雄'
+        # nameDict['swt199614'] = '孙文韬'
+        # nameDict['wxid_i711szwrnup922'] = '戚宇隆'
         # for i in nameDict:
         #     if nameDict[i] == '欣雪': nameDict[i] = '陈欣雪'
         
